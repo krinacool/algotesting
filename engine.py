@@ -44,6 +44,7 @@ class TradingEngine:
         self.last_ltp = 0
         self.logs = []
         self.pnl = 0.0
+        self.logged_in = False
         self.lock = threading.Lock()
 
     def add_log(self, message):
@@ -70,10 +71,12 @@ class TradingEngine:
             )
             if not res or res.get('stat') != 'Ok':
                 self.add_log(f"Login Failed: {res.get('emsg') if res else 'Unknown Error'}")
+                self.logged_in = False
                 if self.config['trading_mode'] == 'Real':
                     return
             else:
                 self.add_log("Login Successful")
+                self.logged_in = True
 
             self.is_running = True
             self.add_log(f"Starting Algo in {self.config['trading_mode']} mode")
@@ -205,6 +208,7 @@ class TradingEngine:
         with self.lock:
             return {
                 'running': self.is_running,
+                'logged_in': self.logged_in,
                 'pnl': self.pnl,
                 'positions': self.positions,
                 'logs': self.logs[-10:],

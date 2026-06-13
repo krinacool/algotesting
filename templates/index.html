@@ -33,7 +33,9 @@
     </div>
 
     <div class="pnl-strip">
-        LTP: <span id="ltp">0.00</span> | Total P&L: <span id="total-pnl">0.00</span> | Status: <span id="algo-status">OFF</span>
+        LTP: <span id="ltp">0.00</span> | Total P&L: <span id="total-pnl">0.00</span> |
+        Status: <span id="algo-status">OFF</span> |
+        Broker Connection: <span id="login-status" style="color: #ff4444;">DISCONNECTED</span>
     </div>
 
     <div class="dashboard">
@@ -125,6 +127,30 @@
             <button class="btn-orange">Default Settings</button>
         </div>
 
+        <!-- Order Details Space -->
+        <div class="section" style="grid-column: span 2;">
+            <h2>Order Details</h2>
+            <div style="max-height: 200px; overflow-y: auto;">
+                <table style="width: 100%; border-collapse: collapse; font-size: 0.8em; text-align: left;">
+                    <thead>
+                        <tr style="border-bottom: 1px solid #444; color: #ffc107;">
+                            <th>Symbol</th>
+                            <th>Type</th>
+                            <th>Qty</th>
+                            <th>Entry</th>
+                            <th>LTP</th>
+                            <th>SL</th>
+                            <th>Target</th>
+                            <th>P&L</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="order-details">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
         <div id="log-area"></div>
     </div>
 
@@ -135,6 +161,32 @@
             document.getElementById('total-pnl').innerText = data.pnl.toFixed(2);
             document.getElementById('total-pnl').className = data.pnl >= 0 ? 'pos' : 'neg';
             document.getElementById('algo-status').innerText = data.running ? 'RUNNING' : 'OFF';
+
+            var loginStatus = document.getElementById('login-status');
+            if (data.logged_in) {
+                loginStatus.innerText = 'CONNECTED';
+                loginStatus.style.color = '#00ff00';
+            } else {
+                loginStatus.innerText = 'DISCONNECTED';
+                loginStatus.style.color = '#ff4444';
+            }
+
+            var orderBody = document.getElementById('order-details');
+            orderBody.innerHTML = '';
+            data.positions.forEach(p => {
+                var row = `<tr>
+                    <td>${p.symbol}</td>
+                    <td>${p.type}</td>
+                    <td>${p.qty}</td>
+                    <td>${p.entry_price.toFixed(2)}</td>
+                    <td>${p.current_price.toFixed(2)}</td>
+                    <td>${p.sl.toFixed(2)}</td>
+                    <td>${p.target.toFixed(2)}</td>
+                    <td class="${p.pnl >= 0 ? 'pos' : 'neg'}">${p.pnl.toFixed(2)}</td>
+                    <td>${p.status}</td>
+                </tr>`;
+                orderBody.innerHTML += row;
+            });
 
             var logArea = document.getElementById('log-area');
             logArea.innerHTML = data.logs.join('<br>');
