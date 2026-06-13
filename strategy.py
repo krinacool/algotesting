@@ -22,31 +22,35 @@ def calculate_supertrend(df, length, factor):
 
     return df
 
-def get_strategy_signals(df, length1=7, factor1=2.1, length2=10, factor2=1.0, use_dual_st=True):
+def get_strategy_signals(df, length1=7, factor1=2.1, length2=10, factor2=1.0, strategy_mode='dual'):
     """
     Generates signals based on Supertrend.
     """
-    df = calculate_supertrend(df, length1, factor1)
-    if use_dual_st:
+    if strategy_mode == 'st1' or strategy_mode == 'dual':
+        df = calculate_supertrend(df, length1, factor1)
+    if strategy_mode == 'st2' or strategy_mode == 'dual':
         df = calculate_supertrend(df, length2, factor2)
 
     if len(df) == 0:
         return 'NONE'
 
     last_row = df.iloc[-1]
-    t1 = last_row.get(f'trend_{length1}_{factor1}')
 
-    if use_dual_st:
+    if strategy_mode == 'dual':
+        t1 = last_row.get(f'trend_{length1}_{factor1}')
         t2 = last_row.get(f'trend_{length2}_{factor2}')
         if t1 == 1 and t2 == 1:
             return 'BUY_CALL'
         elif t1 == -1 and t2 == -1:
             return 'BUY_PUT'
-    else:
-        if t1 == 1:
-            return 'BUY_CALL'
-        elif t1 == -1:
-            return 'BUY_PUT'
+    elif strategy_mode == 'st1':
+        t1 = last_row.get(f'trend_{length1}_{factor1}')
+        if t1 == 1: return 'BUY_CALL'
+        if t1 == -1: return 'BUY_PUT'
+    elif strategy_mode == 'st2':
+        t2 = last_row.get(f'trend_{length2}_{factor2}')
+        if t2 == 1: return 'BUY_CALL'
+        if t2 == -1: return 'BUY_PUT'
 
     return 'NONE'
 

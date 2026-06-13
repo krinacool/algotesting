@@ -35,7 +35,7 @@ class TradingEngine:
             'st_factor1': 2.1,
             'st_length2': 10,
             'st_factor2': 1.0,
-            'use_dual_st': True,
+            'strategy_mode': 'dual',
             'timeframe': 1,
             'select_by': 'premium',
             'target_option_value': 50
@@ -114,7 +114,7 @@ class TradingEngine:
                             signal = get_strategy_signals(df,
                                                           self.config['st_length1'], self.config['st_factor1'],
                                                           self.config['st_length2'], self.config['st_factor2'],
-                                                          use_dual_st=self.config.get('use_dual_st', True))
+                                                          strategy_mode=self.config.get('strategy_mode', 'dual'))
 
                             if signal != 'NONE':
                                 self.handle_signal(signal, ltp)

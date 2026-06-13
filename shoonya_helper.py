@@ -63,10 +63,20 @@ class ShoonyaApiHelper(NorenApi):
 
                 opt['delta'] = 0 # Default delta
                 if fetch_greeks:
-                    # The standard SDK does not have a reliable option_greek method
-                    # For production, one would use a library like mibian or py_black_scholes
-                    # Here we set delta to 0 and log it in the engine
-                    pass
+                    # Simplified Delta calculation based on ATM/OTM/ITM for demonstration
+                    # In a real environment, use Black-Scholes library
+                    strike = float(opt['strprc'])
+                    spot = float(strikeprice)
+                    is_ce = opt['optt'] == 'CE'
+
+                    if is_ce:
+                        if spot > strike: opt['delta'] = 0.7  # ITM
+                        elif spot < strike: opt['delta'] = 0.3 # OTM
+                        else: opt['delta'] = 0.5 # ATM
+                    else:
+                        if spot < strike: opt['delta'] = -0.7 # ITM
+                        elif spot > strike: opt['delta'] = -0.3 # OTM
+                        else: opt['delta'] = -0.5 # ATM
             return chain['values']
         return []
 
