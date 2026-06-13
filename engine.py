@@ -45,6 +45,7 @@ class TradingEngine:
         self.logs = []
         self.pnl = 0.0
         self.logged_in = False
+        self.token_cache = {}
         self.lock = threading.Lock()
 
     def add_log(self, message):
@@ -99,9 +100,15 @@ class TradingEngine:
                 ltp = self.api.get_ltp(exch, symbol)
                 if ltp:
                     self.last_ltp = ltp
-                    token_res = self.api.searchscrip(exch, symbol)
-                    if token_res and token_res['stat'] == 'Ok':
-                        token = token_res['values'][0]['token']
+
+                    cache_key = f"{exch}:{symbol}"
+                    if cache_key not in self.token_cache:
+                        token_res = self.api.searchscrip(exch, symbol)
+                        if token_res and token_res['stat'] == 'Ok':
+                            self.token_cache[cache_key] = token_res['values'][0]['token']
+
+                    token = self.token_cache.get(cache_key)
+                    if token:
                         tf = int(self.config.get('timeframe', 1))
                         candles = self.api.get_time_price_series(exch, token, interval=tf)
                         if candles:

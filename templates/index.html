@@ -159,7 +159,26 @@
     </div>
 
     <script>
+        var audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        function playSound(type) {
+            var osc = audioCtx.createOscillator();
+            var gain = audioCtx.createGain();
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+
+            if (type === 'save') {
+                osc.frequency.setValueAtTime(880, audioCtx.currentTime); // A5
+                gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.5);
+                osc.start(); osc.stop(audioCtx.currentTime + 0.5);
+            } else if (type === 'trade') {
+                osc.frequency.setValueAtTime(1320, audioCtx.currentTime); // E6
+                gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.8);
+                osc.start(); osc.stop(audioCtx.currentTime + 0.8);
+            }
+        }
+
         var socket = io();
+        var lastPosCount = 0;
         socket.on('update', function(data) {
             document.getElementById('ltp').innerText = data.ltp.toFixed(2);
             document.getElementById('total-pnl').innerText = data.pnl.toFixed(2);
@@ -176,6 +195,11 @@
             }
 
             var orderBody = document.getElementById('order-details');
+            if (data.positions.length > lastPosCount) {
+                playSound('trade');
+            }
+            lastPosCount = data.positions.length;
+
             orderBody.innerHTML = '';
             data.positions.forEach(p => {
                 var row = `<tr>
@@ -225,7 +249,10 @@
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(config)
-            }).then(r => alert('Configuration Saved Successfully'));
+            }).then(r => {
+                playSound('save');
+                alert('Configuration Saved Successfully');
+            });
         }
 
         function startAlgo() {
