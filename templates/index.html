@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Algo Trading Panel</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <style>
+        body { background-color: #000; color: #fff; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 20px; }
+        .header { text-align: center; border-bottom: 2px solid #444; padding-bottom: 10px; margin-bottom: 20px; }
+        .header h1 { margin: 0; color: #ffc107; font-size: 1.5em; text-transform: uppercase; }
+        .dashboard { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; }
+        .section { padding: 10px; }
+        .section h2 { color: #00ffcc; font-size: 1.1em; text-transform: uppercase; margin-bottom: 15px; text-align: center; border-bottom: 1px solid #333; padding-bottom: 5px; }
+        .field { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 8px; align-items: center; }
+        label { font-size: 0.85em; color: #ddd; }
+        input, select { background: #fff; color: #000; border: 1px solid #ccc; padding: 3px 5px; font-size: 0.9em; width: 100%; box-sizing: border-box; }
+        .buttons { grid-column: span 2; display: flex; justify-content: center; gap: 15px; margin-top: 20px; border-top: 1px solid #444; padding-top: 20px; }
+        button { padding: 8px 25px; font-weight: bold; border-radius: 3px; border: none; cursor: pointer; text-transform: uppercase; font-size: 0.9em; }
+        .btn-blue { background-color: #007bff; color: #fff; }
+        .btn-green { background-color: #28a745; color: #fff; }
+        .btn-red { background-color: #dc3545; color: #fff; }
+        .btn-orange { background-color: #ff8c00; color: #fff; }
+        #log-area { grid-column: span 2; background: #111; height: 100px; overflow-y: auto; padding: 10px; font-family: monospace; font-size: 0.75em; border: 1px solid #333; margin-top: 20px; }
+        .pnl-strip { background: #222; padding: 10px; text-align: center; font-weight: bold; margin-bottom: 10px; }
+        .pos { color: #00ff00; }
+        .neg { color: #ff4444; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Algo Trading Panel</h1>
+    </div>
+
+    <div class="pnl-strip">
+        LTP: <span id="ltp">0.00</span> | Total P&L: <span id="total-pnl">0.00</span> | Status: <span id="algo-status">OFF</span>
+    </div>
+
+    <div class="dashboard">
+        <!-- LOGIN DETAILS -->
+        <div class="section">
+            <h2>Login Details</h2>
+            <div class="field"><label><input type="checkbox" style="width:auto"> Another Session</label></div>
+            <div class="field"><label>User ID</label><input type="text" id="userid" value="FA131597"></div>
+            <div class="field"><label>Secret Key</label><input type="text" id="api_key"></div>
+            <div class="field"><label>Password</label><input type="password" id="password"></div>
+            <div class="field"><label>TOTP</label><input type="text" id="totp_secret"></div>
+            <div class="field">
+                <label>Telegram Alert</label>
+                <select id="telegram_alert"><option>ON</option><option>OFF</option></select>
+            </div>
+            <div class="field"><label>Telegram Chat ID</label><input type="text" id="telegram_chat_id"></div>
+            <div class="field"><label>Telegram Bot Token</label><input type="text" id="telegram_bot_token"></div>
+        </div>
+
+        <!-- TRADING -->
+        <div class="section">
+            <h2>Trading</h2>
+            <div class="field">
+                <label>Trading Mode</label>
+                <select id="trading_mode"><option>Paper</option><option>Real</option></select>
+            </div>
+            <div class="field">
+                <label>Option Select By</label>
+                <select id="select_by"><option value="premium">Premium</option><option value="delta">Delta</option></select>
+            </div>
+            <div class="field"><label>Target Option Value</label><input type="number" id="target_option_value" value="50"></div>
+            <div class="field">
+                <label>Order Type</label>
+                <select id="order_type"><option>MIS</option><option>NRML</option><option>CNC</option></select>
+            </div>
+            <div class="field"><label>Strike Diff</label><input type="number" id="strike_diff" value="1"></div>
+            <div class="field">
+                <label>Stoploss</label>
+                <select id="stoploss_type"><option>Supertrend</option><option>Fixed Points</option></select>
+            </div>
+            <div class="field"><label>Max SL %</label><input type="number" id="max_sl_pct" value="10"></div>
+            <div class="field"><label>Target In Point</label><input type="number" id="target_points" value="10"></div>
+            <div class="field"><label>Lots</label><input type="number" id="lots" value="1"></div>
+        </div>
+
+        <!-- STRATEGY -->
+        <div class="section">
+            <h2>Strategy</h2>
+            <div class="field">
+                <label>Instrument</label>
+                <select id="instrument"><option>NIFTY</option><option>SENSEX</option></select>
+            </div>
+            <div class="field">
+                <label>Use Dual ST</label>
+                <select id="use_dual_st"><option value="ON">ON</option><option value="OFF">OFF</option></select>
+            </div>
+            <div class="field"><label>ST Length 1</label><input type="number" id="st_length1" value="7"></div>
+            <div class="field"><label>ST Factor 1</label><input type="number" id="st_factor1" value="2.1" step="0.1"></div>
+            <div class="field"><label>ST Length 2</label><input type="number" id="st_length2" value="10"></div>
+            <div class="field"><label>ST Factor 2</label><input type="number" id="st_factor2" value="1" step="0.1"></div>
+            <div class="field">
+                <label>Timeframe</label>
+                <select id="timeframe">
+                    <option value="1">1 minute</option>
+                    <option value="3">3 minute</option>
+                    <option value="5">5 minute</option>
+                    <option value="15">15 minute</option>
+                </select>
+            </div>
+            <div class="field">
+                <label>Trailing SL</label>
+                <select id="trailing_sl"><option value="OFF">OFF</option><option value="ON">ON</option></select>
+            </div>
+            <div class="field"><label>Trailing Pts</label><input type="number" id="trailing_points" value="5"></div>
+        </div>
+
+        <!-- TIME -->
+        <div class="section">
+            <h2>Time</h2>
+            <div class="field"><label>Start Algo</label><input type="text" id="start_time" value="09:15:00"></div>
+            <div class="field"><label>Square Off</label><input type="text" id="square_off_time" value="15:15:00"></div>
+            <div class="field"><label>Stop</label><input type="text" id="stop_time" value="15:30:00"></div>
+        </div>
+
+        <div class="buttons">
+            <button class="btn-blue" onclick="saveDetails()">Save Details</button>
+            <button class="btn-green" onclick="startAlgo()">Start Algo</button>
+            <button class="btn-red" onclick="stopAlgo()">Stop Algo</button>
+            <button class="btn-orange">Default Settings</button>
+        </div>
+
+        <div id="log-area"></div>
+    </div>
+
+    <script>
+        var socket = io();
+        socket.on('update', function(data) {
+            document.getElementById('ltp').innerText = data.ltp.toFixed(2);
+            document.getElementById('total-pnl').innerText = data.pnl.toFixed(2);
+            document.getElementById('total-pnl').className = data.pnl >= 0 ? 'pos' : 'neg';
+            document.getElementById('algo-status').innerText = data.running ? 'RUNNING' : 'OFF';
+
+            var logArea = document.getElementById('log-area');
+            logArea.innerHTML = data.logs.join('<br>');
+            logArea.scrollTop = logArea.scrollHeight;
+        });
+
+        function saveDetails() {
+            var config = {
+                userid: document.getElementById('userid').value,
+                trading_mode: document.getElementById('trading_mode').value,
+                instrument: document.getElementById('instrument').value,
+                lots: parseInt(document.getElementById('lots').value),
+                target_points: parseInt(document.getElementById('target_points').value),
+                max_sl_pct: parseInt(document.getElementById('max_sl_pct').value),
+                trailing_sl: document.getElementById('trailing_sl').value,
+                trailing_points: parseInt(document.getElementById('trailing_points').value),
+                start_time: document.getElementById('start_time').value,
+                square_off_time: document.getElementById('square_off_time').value,
+                st_length1: parseInt(document.getElementById('st_length1').value),
+                st_factor1: parseFloat(document.getElementById('st_factor1').value),
+                st_length2: parseInt(document.getElementById('st_length2').value),
+                st_factor2: parseFloat(document.getElementById('st_factor2').value),
+                use_dual_st: document.getElementById('use_dual_st').value === 'ON',
+                timeframe: parseInt(document.getElementById('timeframe').value),
+                select_by: document.getElementById('select_by').value,
+                target_option_value: parseInt(document.getElementById('target_option_value').value),
+                password: document.getElementById('password').value,
+                totp_secret: document.getElementById('totp_secret').value,
+                api_key: document.getElementById('api_key').value
+            };
+            fetch('/save_config', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(config)
+            }).then(r => alert('Configuration Saved Successfully'));
+        }
+
+        function startAlgo() {
+            fetch('/start').then(r => console.log('Algo Started'));
+        }
+
+        function stopAlgo() {
+            fetch('/stop').then(r => console.log('Algo Stopped'));
+        }
+    </script>
+</body>
+</html>

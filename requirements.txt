@@ -1,0 +1,10 @@
+NorenRestApiOAuth
+pandas
+pandas-ta
+flask
+flask-socketio
+pyotp
+pyyaml
+requests
+websocket-client
+playwright
