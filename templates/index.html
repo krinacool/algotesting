@@ -159,8 +159,18 @@
     </div>
 
     <script>
-        var audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        var audioCtx;
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        }
+
         function playSound(type) {
+            initAudio();
             var osc = audioCtx.createOscillator();
             var gain = audioCtx.createGain();
             osc.connect(gain);
