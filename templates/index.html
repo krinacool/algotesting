@@ -47,6 +47,8 @@
             <div class="field"><label>Secret Key</label><input type="text" id="api_key"></div>
             <div class="field"><label>Password</label><input type="password" id="password"></div>
             <div class="field"><label>TOTP</label><input type="text" id="totp_secret"></div>
+            <div class="field"><label>Vendor Code</label><input type="text" id="vendor_code"></div>
+            <div class="field"><label>IMEI</label><input type="text" id="imei" value="abc1234"></div>
             <div class="field">
                 <label>Telegram Alert</label>
                 <select id="telegram_alert"><option>ON</option><option>OFF</option></select>
@@ -273,7 +275,9 @@
                 control_mode: document.getElementById('control_mode').value,
                 password: document.getElementById('password').value,
                 totp_secret: document.getElementById('totp_secret').value,
-                api_key: document.getElementById('api_key').value
+                api_key: document.getElementById('api_key').value,
+                vendor_code: document.getElementById('vendor_code').value,
+                imei: document.getElementById('imei').value
             };
             fetch('/save_config', {
                 method: 'POST',
