@@ -79,6 +79,10 @@
             <div class="field"><label>Max SL %</label><input type="number" id="max_sl_pct" value="10"></div>
             <div class="field"><label>Target In Point</label><input type="number" id="target_points" value="10"></div>
             <div class="field"><label>Lots</label><input type="number" id="lots" value="1"></div>
+            <div class="field">
+                <label>Control Mode</label>
+                <select id="control_mode"><option>Algo</option><option>Manual</option></select>
+            </div>
         </div>
 
         <!-- STRATEGY -->
@@ -124,6 +128,19 @@
             <div class="field"><label>Stop</label><input type="text" id="stop_time" value="15:30:00"></div>
         </div>
 
+        <!-- MANUAL TRADING -->
+        <div class="section">
+            <h2>Manual Trading</h2>
+            <div class="field"><label>Strike Price</label><input type="number" id="manual_strike"></div>
+            <div class="field">
+                <label>Option Type</label>
+                <select id="manual_type"><option>CE</option><option>PE</option></select>
+            </div>
+            <div class="buttons" style="grid-column: span 2; margin-top: 5px; border:none; padding:0;">
+                <button class="btn-green" onclick="placeManual()">Place Order</button>
+            </div>
+        </div>
+
         <div class="buttons">
             <button class="btn-blue" onclick="saveDetails()">Save Details</button>
             <button class="btn-green" onclick="startAlgo()">Start Algo</button>
@@ -147,6 +164,7 @@
                             <th>Target</th>
                             <th>P&L</th>
                             <th>Status</th>
+                            <th>Action</th>
                         </tr>
                     </thead>
                     <tbody id="order-details">
@@ -222,6 +240,7 @@
                     <td>${p.target.toFixed(2)}</td>
                     <td class="${p.pnl >= 0 ? 'pos' : 'neg'}">${p.pnl.toFixed(2)}</td>
                     <td>${p.status}</td>
+                    <td>${p.status === 'OPEN' ? `<button class="btn-red" style="padding: 2px 5px; font-size: 0.7em;" onclick="exitManual('${p.id}')">EXIT</button>` : ''}</td>
                 </tr>`;
                 orderBody.innerHTML += row;
             });
@@ -251,6 +270,7 @@
                 timeframe: parseInt(document.getElementById('timeframe').value),
                 select_by: document.getElementById('select_by').value,
                 target_option_value: parseInt(document.getElementById('target_option_value').value),
+                control_mode: document.getElementById('control_mode').value,
                 password: document.getElementById('password').value,
                 totp_secret: document.getElementById('totp_secret').value,
                 api_key: document.getElementById('api_key').value
@@ -271,6 +291,27 @@
 
         function stopAlgo() {
             fetch('/stop').then(r => console.log('Algo Stopped'));
+        }
+
+        function placeManual() {
+            var data = {
+                strike: document.getElementById('manual_strike').value,
+                type: document.getElementById('manual_type').value
+            };
+            if(!data.strike) { alert('Enter strike price'); return; }
+            fetch('/place_manual', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            }).then(r => console.log('Manual Order Placed'));
+        }
+
+        function exitManual(id) {
+            fetch('/exit_manual', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({id: id})
+            }).then(r => console.log('Manual Exit Requested'));
         }
     </script>
 </body>

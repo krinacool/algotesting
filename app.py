@@ -28,6 +28,18 @@ def stop_algo():
     engine.stop()
     return jsonify({"status": "stopped"})
 
+@app.route('/place_manual', methods=['POST'])
+def place_manual():
+    data = request.json
+    engine.manual_place_order(data['strike'], data['type'])
+    return jsonify({"status": "success"})
+
+@app.route('/exit_manual', methods=['POST'])
+def exit_manual():
+    data = request.json
+    engine.manual_exit_order(data['id'])
+    return jsonify({"status": "success"})
+
 def background_update():
     while True:
         state = engine.get_state()

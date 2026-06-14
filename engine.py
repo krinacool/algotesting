@@ -38,7 +38,8 @@ class TradingEngine:
             'strategy_mode': 'dual',
             'timeframe': 1,
             'select_by': 'premium',
-            'target_option_value': 50
+            'target_option_value': 50,
+            'control_mode': 'Algo'
         }
         self.positions = []
         self.last_ltp = 0
@@ -117,13 +118,14 @@ class TradingEngine:
                             df['close'] = df['intc'].astype(float)
                             df = df.iloc[::-1]
 
-                            signal = get_strategy_signals(df,
-                                                          self.config['st_length1'], self.config['st_factor1'],
-                                                          self.config['st_length2'], self.config['st_factor2'],
-                                                          strategy_mode=self.config.get('strategy_mode', 'dual'))
+                            if self.config.get('control_mode') == 'Algo':
+                                signal = get_strategy_signals(df,
+                                                              self.config['st_length1'], self.config['st_factor1'],
+                                                              self.config['st_length2'], self.config['st_factor2'],
+                                                              strategy_mode=self.config.get('strategy_mode', 'dual'))
 
-                            if signal != 'NONE':
-                                self.handle_signal(signal, ltp)
+                                if signal != 'NONE':
+                                    self.handle_signal(signal, ltp)
 
                 self.manage_positions()
                 time.sleep(1)
@@ -202,6 +204,54 @@ class TradingEngine:
                             self.add_log(f"Trailing SL updated to {p['sl']}")
 
             self.pnl = sum(p['pnl'] for p in self.positions)
+
+    def manual_place_order(self, strike, opt_type):
+        with self.lock:
+            if not self.logged_in:
+                self.add_log("Error: Not logged in to broker")
+                return
+
+            exch_opt = 'NFO' if self.config['instrument'] == 'NIFTY' else 'BFO'
+            underlying = 'NIFTY' if self.config['instrument'] == 'NIFTY' else 'SENSEX'
+
+            chain = self.api.get_option_chain_with_quotes(exch_opt, underlying, int(strike), count=1, fetch_greeks=False)
+            filtered = [o for o in chain if o.get('optt') == opt_type and int(float(o.get('strprc', 0))) == int(strike)]
+
+            if not filtered:
+                self.add_log(f"Could not find {opt_type} option for strike {strike}")
+                return
+
+            selected_opt = filtered[0]
+            entry_price = selected_opt['lp']
+            lot_size = self.api.get_instrument_lot_size(selected_opt['exch'], selected_opt['tsym'])
+
+            new_pos = {
+                'id': str(int(time.time())),
+                'symbol': selected_opt['tsym'],
+                'exch': selected_opt['exch'],
+                'token': selected_opt['token'],
+                'type': opt_type,
+                'qty': self.config['lots'] * lot_size,
+                'entry_price': entry_price,
+                'current_price': entry_price,
+                'status': 'OPEN',
+                'sl': entry_price * (1 - self.config['max_sl_pct']/100),
+                'target': entry_price + self.config['target_points'],
+                'pnl': 0.0
+            }
+
+            if self.config['trading_mode'] == 'Real':
+                self.api.place_order_wrapper('B', self.config['order_type'], new_pos['exch'], new_pos['symbol'], new_pos['qty'], 'MKT')
+
+            self.positions.append(new_pos)
+            self.add_log(f"Manual Order: Entered {new_pos['symbol']} at {entry_price}")
+
+    def manual_exit_order(self, pos_id):
+        with self.lock:
+            for p in self.positions:
+                if p.get('id') == pos_id and p['status'] == 'OPEN':
+                    self.exit_trade(p, "MANUAL EXIT")
+                    break
 
     def exit_trade(self, pos, reason):
         pos['status'] = 'CLOSED'
