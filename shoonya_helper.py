@@ -16,21 +16,41 @@ class ShoonyaApiHelper(NorenApi):
         u_appkey = f'{userid}|{api_key}'
         appkey = hashlib.sha256(u_appkey.encode('utf-8')).hexdigest()
         totp = pyotp.TOTP(totp_secret).now()
+
+        # Use direct REST call to QuickAuth as it is more reliable than SDK's login method
+        # and resolves the attribute error by manually setting internal state
+        url = "https://api.shoonya.com/NorenWClientAPI/QuickAuth"
+        values = {
+            "source": "API",
+            "apkversion": "js-1.0.0", # Common fix for Shoonya login issues
+            "uid": userid,
+            "pwd": pwd,
+            "factor2": totp,
+            "vc": vendor_code,
+            "appkey": appkey,
+            "imei": imei
+        }
+
+        payload = 'jData=' + json.dumps(values)
         try:
-            res = self.login(userid=userid, password=password, twoFA=totp,
-                             vendor_code=vendor_code, api_secret=api_key, imei=imei)
-            return res
-        except Exception as e:
-            # Handle potential internal SDK errors or specific missing attributes
-            host = self._NorenApi__service_config['host'] if hasattr(self, '_NorenApi__service_config') else 'https://api.shoonya.com/NorenWClientAPI'
-            url = f"{host}/QuickAuth"
-            values = {"source": "API", "apkversion": "1.0.0", "uid": userid, "pwd": pwd, "factor2": totp, "vc": vendor_code, "appkey": appkey, "imei": imei}
-            payload = 'jData=' + json.dumps(values)
             res = requests.post(url, data=payload)
-            resDict = json.loads(res.text)
-            if resDict.get('stat') == 'Ok':
-                self.set_session(userid, password, resDict['susertoken'], resDict.get('accesstoken'))
-            return resDict
+            res_dict = json.loads(res.text)
+
+            if res_dict.get('stat') == 'Ok':
+                # Manually set internal SDK session variables to ensure all methods work
+                # and to avoid "no attribute" errors
+                self._NorenApi__username = userid
+                self._NorenApi__accountid = userid
+                self._NorenApi__password = password
+                self._NorenApi__susertoken = res_dict['susertoken']
+                self._NorenApi__access_token = res_dict.get('accesstoken')
+
+                # Also use the SDK's set_session to be thorough
+                self.set_session(userid, password, res_dict['susertoken'], res_dict.get('accesstoken'))
+
+            return res_dict
+        except Exception as e:
+            return {"stat": "Not_Ok", "emsg": str(e)}
 
     def get_ltp(self, exchange, symbol):
         search_res = self.searchscrip(exchange=exchange, searchtext=symbol)
