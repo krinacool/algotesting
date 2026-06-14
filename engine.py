@@ -73,8 +73,7 @@ class TradingEngine:
             if not res or res.get('stat') != 'Ok':
                 self.add_log(f"Login Failed: {res.get('emsg') if res else 'Unknown Error'}")
                 self.logged_in = False
-                if self.config['trading_mode'] == 'Real':
-                    return
+                return # Block start even in Paper mode as API access is needed
             else:
                 self.add_log("Login Successful")
                 self.logged_in = True

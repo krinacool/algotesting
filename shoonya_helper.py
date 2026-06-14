@@ -20,8 +20,10 @@ class ShoonyaApiHelper(NorenApi):
             res = self.login(userid=userid, password=password, twoFA=totp,
                              vendor_code=vendor_code, api_secret=api_key, imei=imei)
             return res
-        except AttributeError:
-            url = f"{self._NorenApi__service_config['host']}/QuickAuth"
+        except Exception as e:
+            # Handle potential internal SDK errors or specific missing attributes
+            host = self._NorenApi__service_config['host'] if hasattr(self, '_NorenApi__service_config') else 'https://api.shoonya.com/NorenWClientAPI'
+            url = f"{host}/QuickAuth"
             values = {"source": "API", "apkversion": "1.0.0", "uid": userid, "pwd": pwd, "factor2": totp, "vc": vendor_code, "appkey": appkey, "imei": imei}
             payload = 'jData=' + json.dumps(values)
             res = requests.post(url, data=payload)
